@@ -144,15 +144,15 @@ class FeedForwarLayer(nn.Module):
         return x
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, embed_dim: int, max_num_embeddings: int, dropout: Optional[int]=0):
+    def __init__(self, embed_dim: int, vocabulary_size: int, dropout: Optional[int]=0):
         super(PositionalEncoding, self).__init__()
 
         self.dropout = nn.Dropout(dropout)
 
-        positions = torch.arange(max_num_embeddings).unsqueeze(1)
+        positions = torch.arange(vocabulary_size).unsqueeze(1)
         div_term = torch.exp(-(torch.arange(0, embed_dim, 2) * np.log(10000.0) / embed_dim))
         terms = positions * div_term
-        self.positional_encodings = torch.zeros(1, max_num_embeddings, embed_dim)
+        self.positional_encodings = torch.zeros(1, vocabulary_size, embed_dim)
         self.positional_encodings[0, :, 0::2] = torch.sin(terms)
         self.positional_encodings[0, :, 1::2] = torch.cos(terms)
 
