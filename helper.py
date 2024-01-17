@@ -76,6 +76,8 @@ class MultiHeadAttention(nn.Module):
         q = rearrange(x, "b d (w n)->b d n w", n=self.num_heads)
         k = rearrange(cross_attention_kv, "b d (w n)->b d n w", n=self.num_heads)
         v = rearrange(cross_attention_kv, "b d (w n)->b d n w", n=self.num_heads)
+        
+        return q, k, v
     
     def _self_attention_projection(self, x: torch.tensor):
         q = rearrange(x, "b d (w n)->b d n w", n=self.num_heads)
@@ -126,19 +128,36 @@ class AddAndNorm(nn.Module):
         x = self.norm(x)
         return x
 
+class FeedForwarLayer(nn.Module):
+    def __init__(self, embed_dim):
+        super(FeedForwarLayer, self).__init__()
+        
+        self.layer = nn.Sequential(
+            nn.Linear(embed_dim, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, embed_dim)
+        )
+
+    def forward(self, x):
+        x = self.model(x)
+        return x
+
 class PositionalEncoding(nn.Module):
-    def __init__(self, dim: int, max_num_embeddings: int, dropout: Optional[int]=0):
+    def __init__(self, embed_dim: int, max_num_embeddings: int, dropout: Optional[int]=0):
         super(PositionalEncoding, self).__init__()
 
+        self.dropout = nn.Dropout(dropout)
+
         positions = torch.arange(max_num_embeddings).unsqueeze(1)
-        div_term = torch.exp(-(torch.arange(0, dim, 2) * np.log(10000.0) / dim))
+        div_term = torch.exp(-(torch.arange(0, embed_dim, 2) * np.log(10000.0) / embed_dim))
         terms = positions * div_term
-        self.positional_encodings = torch.zeros(max_num_embeddings, dim)
-        self.positional_encodings[:, 0::2] = torch.sin(terms)
-        self.positional_encodings[:, 1::2] = torch.cos(terms)
+        self.positional_encodings = torch.zeros(1, max_num_embeddings, embed_dim)
+        self.positional_encodings[0, :, 0::2] = torch.sin(terms)
+        self.positional_encodings[0, :, 1::2] = torch.cos(terms)
 
     def forward(self, x):
         x = x + self.positional_encodings[:x.size(0)]
+        x = self.dropout(x)
         return x
 
 if __name__ == "__main__":
