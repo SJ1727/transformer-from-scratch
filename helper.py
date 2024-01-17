@@ -9,7 +9,7 @@ from typing import Optional
 torch.manual_seed(0)
 
 class MultiHeadAttention(nn.Module):    
-    def __init__(self, embed_dim: int, num_heads: int=1, masked: bool=False, cross_attention_kv: torch.tensor=None):
+    def __init__(self, embed_dim: int, num_heads: int=1):
         """
         Implementation of the multihead attention system presented in the paper
         https://arxiv.org/abs/1706.03762
@@ -21,8 +21,6 @@ class MultiHeadAttention(nn.Module):
         super(MultiHeadAttention, self).__init__()
         if embed_dim % num_heads != 0:
             raise Exception("Embed dimension must be divisable by the number of heads")
-        
-        self.masked = masked
         
         self.num_heads = num_heads
         self.embed_dim = embed_dim
@@ -49,7 +47,7 @@ class MultiHeadAttention(nn.Module):
         masked_logits = logits.masked_fill(mask == 0, float("-inf"))
         return masked_logits
 
-    def _scaled_dot_product(self, q: torch.tensor, k: torch.tensor, v: torch.tensor, mask: Optional[bool]=False) -> torch.tensor:
+    def _scaled_dot_product(self, q: torch.tensor, k: torch.tensor, v: torch.tensor, masked: Optional[bool]=False) -> torch.tensor:
         """
         Applies scaled dot product using query, key, and value with an optional mask
 
@@ -65,7 +63,7 @@ class MultiHeadAttention(nn.Module):
         attention_logits = torch.matmul(q, torch.transpose(k, -2, -1))
         attention_logits *= 1/np.sqrt(self.head_dim)
         
-        if mask:
+        if masked:
             attention_logits = self._mask_logits(attention_logits)
 
         attention = torch.softmax(attention_logits, dim=-1)
@@ -89,10 +87,10 @@ class MultiHeadAttention(nn.Module):
         
         return q, k, v
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
+    def forward(self, x: torch.tensor, cross_attention_kv: torch.tensor=None, masked: bool=False) -> torch.tensor:
         # Breaking up into multiple heads
-        if self.cross_attention_kv is not None:
-            q, k, v = self._cross_attention_projection(x, self.cross_attention_kv)
+        if cross_attention_kv is not None:
+            q, k, v = self._cross_attention_projection(x, cross_attention_kv)
         else:
             q, k, v = self._self_attention_projection(x)
         
@@ -102,7 +100,7 @@ class MultiHeadAttention(nn.Module):
         v = self.value(v)
         
         # Apply scaled dot product on all the heads
-        output = self._scaled_dot_product(q, k, v, mask=self.masked)
+        output = self._scaled_dot_product(q, k, v, masked=masked)
         
         # Concatonating the output
         output = rearrange(output, "b d n w->b d (n w)")
