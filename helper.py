@@ -41,7 +41,8 @@ class MultiHeadAttention(nn.Module):
         Returns:
             torch.tensor: masked logits
         """
-        mask = torch.ones(logits.shape(0), logits.shape(1))
+        
+        mask = torch.ones(logits.size(2), logits.size(3))
         mask = torch.tril(mask, diagonal=0)
 
         masked_logits = logits.masked_fill(mask == 0, float("-inf"))
@@ -115,17 +116,17 @@ class Residual(nn.Module):
         self.func = func
 
     def forward(self, x, **kwargs):
-        x = x + self.func(x, kwargs)
+        x = x + self.func(x, **kwargs)
         return x
     
 class AddAndNorm(nn.Module):
-    def __init__(self, func):
+    def __init__(self, func, embed_dim):
         super(AddAndNorm, self).__init__()
         self.func = func
-        self.norm = nn.LayerNorm()
+        self.norm = nn.LayerNorm(embed_dim)
 
     def forward(self, x, **kwargs):
-        x = Residual(self.func)(x, kwargs)
+        x = Residual(self.func)(x, **kwargs)
         x = self.norm(x)
         return x
 
@@ -133,14 +134,14 @@ class FeedForwarLayer(nn.Module):
     def __init__(self, embed_dim):
         super(FeedForwarLayer, self).__init__()
         
-        self.layer = nn.Sequential(
+        self.layers = nn.Sequential(
             nn.Linear(embed_dim, embed_dim),
             nn.ReLU(),
             nn.Linear(embed_dim, embed_dim)
         )
 
     def forward(self, x):
-        x = self.model(x)
+        x = self.layers(x)
         return x
 
 class PositionalEncoding(nn.Module):

@@ -21,10 +21,10 @@ class Encoder(nn.Module):
 class EncoderBlock(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int):
         super(EncoderBlock, self).__init__()
-        self.self_attention = MultiHeadAttention(embed_dim, num_heads=num_heads)
-        self.feed_forward = FeedForwarLayer(embed_dim)
+        self.self_attention = AddAndNorm(MultiHeadAttention(embed_dim, num_heads=num_heads), embed_dim)
+        self.feed_forward = AddAndNorm(FeedForwarLayer(embed_dim), embed_dim)
 
     def forward(self, x):
-        x = AddAndNorm(self.self_attention)(x)
-        x = AddAndNorm(FeedForwarLayer)(x)
+        x = self.self_attention(x)
+        x = self.feed_forward(x)
         return x

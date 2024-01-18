@@ -23,12 +23,12 @@ class DecoderBlock(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int):
         super(DecoderBlock, self).__init__()
         
-        self.self_attention = MultiHeadAttention(embed_dim, num_heads=num_heads)
-        self.cross_attention = MultiHeadAttention(embed_dim, num_heads=num_heads)
-        self.feed_forward = FeedForwarLayer(embed_dim)
+        self.self_attention = AddAndNorm(MultiHeadAttention(embed_dim, num_heads=num_heads), embed_dim)
+        self.cross_attention = AddAndNorm(MultiHeadAttention(embed_dim, num_heads=num_heads), embed_dim)
+        self.feed_forward = AddAndNorm(FeedForwarLayer(embed_dim), embed_dim)
 
     def forward(self, x, cross_attention_kv):
-        x = AddAndNorm(self.self_attention)(x)
-        x = AddAndNorm(self.cross_attention)(x, cross_attention_kv=cross_attention_kv, masked=True)
-        x = AddAndNorm(self.feed_forward)(x)
+        x = self.self_attention(x)
+        x = self.cross_attention(x, cross_attention_kv=cross_attention_kv, masked=True)
+        x = self.feed_forward(x)
         return x

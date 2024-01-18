@@ -13,7 +13,7 @@ class Transformer(nn.Module):
         self.positional_encodings = PositionalEncoding(embed_dim, vocabulary_size, dropout=dropout)
         self.encoder = Encoder(embed_dim, num_heads, num_layers)
         self.decoder = Decoder(embed_dim, num_heads, num_layers)
-        self.linear = nn.Linear(embed_dim, vocabulary_size)
+        self.linear = nn.Linear(embed_dim, embed_dim)
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, source: torch.tensor, target: torch.tensor):
