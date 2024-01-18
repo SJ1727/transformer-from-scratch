@@ -5,11 +5,11 @@ import torch.optim as optim
 from helper import AddAndNorm, MultiHeadAttention, FeedForwarLayer
 
 class Encoder(nn.Module):
-    def __init__(self, embed_dim: int, num_heads: int, num_layers: int):
+    def __init__(self, embed_dim: int, num_heads: int, feed_forward_dim: int, num_layers: int):
         super(Encoder, self).__init__()
 
         self.encoder = nn.ModuleList([
-            EncoderBlock(embed_dim, num_heads)
+            EncoderBlock(embed_dim, num_heads, feed_forward_dim)
             for _ in range(num_layers)
         ])
 
@@ -19,10 +19,10 @@ class Encoder(nn.Module):
         return x
 
 class EncoderBlock(nn.Module):
-    def __init__(self, embed_dim: int, num_heads: int):
+    def __init__(self, embed_dim: int, num_heads: int, feed_forward_dim: int):
         super(EncoderBlock, self).__init__()
         self.self_attention = AddAndNorm(MultiHeadAttention(embed_dim, num_heads=num_heads), embed_dim)
-        self.feed_forward = AddAndNorm(FeedForwarLayer(embed_dim), embed_dim)
+        self.feed_forward = AddAndNorm(FeedForwarLayer(embed_dim, feed_forward_dim), embed_dim)
 
     def forward(self, x):
         x = self.self_attention(x)
