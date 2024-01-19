@@ -14,15 +14,17 @@ class Transformer(nn.Module):
         self.encoder = Encoder(embed_dim, num_heads, feed_forward_dim, num_layers)
         self.decoder = Decoder(embed_dim, num_heads, feed_forward_dim, num_layers)
         self.linear = nn.Linear(embed_dim, vocabulary_size)
-        self.softmax = nn.LogSoftmax(dim=-1)
+        self.softmax = F.log_softmax(dim=-1)
 
     def forward(self, source: torch.tensor, target: torch.tensor):
         source = self.positional_encodings(source)
         source = self.encoder(source)
-        
         target = self.positional_encodings(target)
+        
+        # Batch size x Max sequence length x Embedding dim
         out = self.decoder(target, source)
         
+        # Batch size x Max sequence length x Vocabulary size
         out = self.linear(out)
         out = self.softmax(out)
 

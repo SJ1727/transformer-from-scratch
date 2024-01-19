@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from einops import rearrange, einsum
+from einops import rearrange
 import numpy as np
 from typing import Optional
 
@@ -75,20 +74,50 @@ class MultiHeadAttention(nn.Module):
         return values
 
     def _cross_attention_projection(self, x: torch.tensor, cross_attention_kv: torch.tensor) -> tuple[torch.tensor]:
+        """
+        Creates the query, key, and value vectors where the key and value vectors come from the other input tensor
+
+        Args:
+            x (torch.tensor): Tensor to obtain query vectors
+            cross_attention_kv (torch.tensor): Tensor to obtain key and value vectors
+
+        Returns:
+            tuple[torch.tensor]: query, key, value
+        """
         q = rearrange(x, "b d (w n)->b d n w", n=self.num_heads)
         k = rearrange(cross_attention_kv, "b d (w n)->b d n w", n=self.num_heads)
         v = rearrange(cross_attention_kv, "b d (w n)->b d n w", n=self.num_heads)
         
         return q, k, v
     
-    def _self_attention_projection(self, x: torch.tensor):
+    def _self_attention_projection(self, x: torch.tensor) -> tuple[torch.tensor]:
+        """
+        Creates the query, key, and value vectors from a tensor
+
+        Args:
+            x (torch.tensor): Tensor to get the vectors from
+
+        Returns:
+            tuple[torch.tensor]: query, key, value
+        """
         q = rearrange(x, "b d (w n)->b d n w", n=self.num_heads)
         k = rearrange(x, "b d (w n)->b d n w", n=self.num_heads)
         v = rearrange(x, "b d (w n)->b d n w", n=self.num_heads)
         
         return q, k, v
 
-    def forward(self, x: torch.tensor, cross_attention_kv: torch.tensor=None, masked: bool=False) -> torch.tensor:
+    def forward(self, x: torch.tensor, cross_attention_kv: Optional[torch.tensor]=None, masked: Optional[bool]=False) -> torch.tensor:
+        """
+        Forward pass of the attention layer
+
+        Args:
+            x (torch.tensor): input tensor
+            cross_attention_kv (Optional[torch.tensor], optional): Optional tensor which can be used to get the key and values vectors in the case of cross attention. Defaults to None.
+            masked (Optional[bool], optional): Can apply a mask to the tensor. Defaults to False.
+
+        Returns:
+            torch.tensor: Output tensor after attention layer
+        """
         # Breaking up into multiple heads
         if cross_attention_kv is not None:
             q, k, v = self._cross_attention_projection(x, cross_attention_kv)
@@ -96,6 +125,7 @@ class MultiHeadAttention(nn.Module):
             q, k, v = self._self_attention_projection(x)
         
         # Pass through linear layers
+        # Batch size x Sequence length x Number of heads x Head dim
         q = self.query(q)
         k = self.key(k)
         v = self.value(v)
@@ -104,6 +134,7 @@ class MultiHeadAttention(nn.Module):
         output = self._scaled_dot_product(q, k, v, masked=masked)
         
         # Concatonating the output
+        # Batch size x Sequence length x embedding dim
         output = rearrange(output, "b d n w->b d (n w)")
         
         # Pass through output layer
@@ -112,26 +143,64 @@ class MultiHeadAttention(nn.Module):
 
 class Residual(nn.Module):
     def __init__(self, func):
+        """
+        Applies residual connection after function
+
+        Args:
+            func (Function): Function before residual connection
+        """
         super(Residual, self).__init__()
         self.func = func
 
-    def forward(self, x, **kwargs):
+    def forward(self, x: torch.tensor, **kwargs) -> torch.tensor:
+        """
+        Forward pass of residual layer
+
+        Args:
+            x (torch.tensor): Tensor before funcion and residual
+
+        Returns:
+            torch.tensor: Output tensor
+        """
         x = x + self.func(x, **kwargs)
         return x
     
 class AddAndNorm(nn.Module):
-    def __init__(self, func, embed_dim):
+    def __init__(self, func, embed_dim: int):
+        """
+        Applies residual connection and layer normilisation
+
+        Args:
+            func (Function): function to be applied before residual and normilisation
+            embed_dim (int): Dimention of the input tensor
+        """
         super(AddAndNorm, self).__init__()
         self.func = func
         self.norm = nn.LayerNorm(embed_dim)
 
-    def forward(self, x, **kwargs):
+    def forward(self, x: torch.tensor, **kwargs) -> torch.tensor:
+        """
+        Forward pass of the Add and Norm layer
+
+        Args:
+            x (torch.tensor): Tensor before function, residual, and normilisation
+
+        Returns:
+            torch.tensor: Ouput tensor
+        """
         x = Residual(self.func)(x, **kwargs)
         x = self.norm(x)
         return x
 
 class FeedForwarLayer(nn.Module):
-    def __init__(self, embed_dim, feed_forward_dim):
+    def __init__(self, embed_dim: int, feed_forward_dim: int):
+        """
+        Feed forward layer
+
+        Args:
+            embed_dim (int): dimension of the input
+            feed_forward_dim (int): dimension of the hidden layer
+        """
         super(FeedForwarLayer, self).__init__()
         
         self.layers = nn.Sequential(
@@ -140,12 +209,29 @@ class FeedForwarLayer(nn.Module):
             nn.Linear(feed_forward_dim, embed_dim)
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        """
+        Forward pass of the feed forward layer
+
+        Args:
+            x (torch.tensor): Tensor before the feed forward layer
+
+        Returns:
+            torch.tensor: Output tensor
+        """
         x = self.layers(x)
         return x
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, embed_dim: int, sequence_length: int, dropout: Optional[int]=0):
+    def __init__(self, embed_dim: int, sequence_length: int, dropout: Optional[int]=0.1):
+        """
+        Applies positional encodding on sequence of vectors
+
+        Args:
+            embed_dim (int): size of the embedding vectors
+            sequence_length (int): maximum sequence length
+            dropout (Optional[int], optional): Dropout probability. Defaults to 0.1.
+        """
         super(PositionalEncoding, self).__init__()
 
         self.dropout = nn.Dropout(dropout)
@@ -158,21 +244,15 @@ class PositionalEncoding(nn.Module):
         self.positional_encodings[0, :, 1::2] = torch.cos(terms)
 
     def forward(self, x):
+        """
+        Forward pass of the positional encodding
+
+        Args:
+            x (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         x = x + self.positional_encodings[:, :x.size(1)]
         x = self.dropout(x)
         return x
-
-if __name__ == "__main__":
-    # test = torch.Tensor([[[1, 2, 3, 4], [2, 2, 2, 2]], [[0, 0, 0, 0], [5, 6, 7, 8]]])
-    # a = MultiHeadAttention(4, 2)
-    # mask = torch.tensor([
-    #     [1, 0],
-    #     [1, 1]
-    # ])
-    # x = a(test, mask=None)
-    # print(x)
-    
-    test = torch.tensor([1, 1, 1])
-    func = lambda x: 2 * x
-    res = AddAndNorm(func)(test)
-    print(res)
