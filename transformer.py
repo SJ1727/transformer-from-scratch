@@ -17,11 +17,14 @@ class Transformer(nn.Module):
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, source: torch.tensor, target: torch.tensor):
+        # Source shape: Batch size x Sequence length x Embedding dimension
         source = self.positional_encodings(source)
         source = self.encoder(source)
+        
+        # Target shape: Batch size x Sequence length x Embedding dimension
         target = self.positional_encodings(target)
         
-        # Batch size x Max sequence length x Embedding dim
+        # Batch size x Max sequence length x Embedding dimeension
         out = self.decoder(target, source)
         
         # Batch size x Max sequence length x Vocabulary size

@@ -118,6 +118,8 @@ class MultiHeadAttention(nn.Module):
         Returns:
             torch.tensor: Output tensor after attention layer
         """
+        # Shape of input (x): Batch size x Sequence length x Embedding dimension
+        
         # Breaking up into multiple heads
         if cross_attention_kv is not None:
             q, k, v = self._cross_attention_projection(x, cross_attention_kv)
