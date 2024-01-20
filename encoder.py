@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from helper import AddAndNorm, MultiHeadAttention, FeedForwarLayer
 
-class Encoder(nn.Module):
+class TransformerEncoder(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int, feed_forward_dim: int, num_layers: int):
         """
         Encoder section of the transformer
@@ -15,10 +15,10 @@ class Encoder(nn.Module):
             feed_forward_dim (int): The dimension of the hidden layer in the feed forward layers
             num_layers (int): The number of encoder layers to be applied
         """
-        super(Encoder, self).__init__()
+        super(TransformerEncoder, self).__init__()
 
         self.encoder = nn.ModuleList([
-            EncoderBlock(embed_dim, num_heads, feed_forward_dim)
+            TransformerEncoderBlock(embed_dim, num_heads, feed_forward_dim)
             for _ in range(num_layers)
         ])
 
@@ -36,7 +36,7 @@ class Encoder(nn.Module):
             x = block(x)
         return x
 
-class EncoderBlock(nn.Module):
+class TransformerEncoderBlock(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int, feed_forward_dim: int):
         """
         Singular layer of the encoder
@@ -46,7 +46,7 @@ class EncoderBlock(nn.Module):
             num_heads (int): The number of heads to be used
             feed_forward_dim (int): The dimension of the hidden layer in the feed forward layers
         """
-        super(EncoderBlock, self).__init__()
+        super(TransformerEncoderBlock, self).__init__()
         self.self_attention = AddAndNorm(MultiHeadAttention(embed_dim, num_heads=num_heads), embed_dim)
         self.feed_forward = AddAndNorm(FeedForwarLayer(embed_dim, feed_forward_dim), embed_dim)
 

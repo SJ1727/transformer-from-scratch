@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from helper import AddAndNorm, MultiHeadAttention, FeedForwarLayer
 
-class Decoder(nn.Module):
+class TransformerDecoder(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int, feed_forward_dim: int, num_layers: int):
         """
         Decoder Section of the transformer
@@ -15,10 +15,10 @@ class Decoder(nn.Module):
             feed_forward_dim (int): The dimension of the feed forward layers hidden layer
             num_layers (int): The number of decoder layers
         """
-        super(Decoder, self).__init__()
+        super(TransformerDecoder, self).__init__()
         
         self.decoder = nn.ModuleList([
-            DecoderBlock(embed_dim, num_heads, feed_forward_dim)
+            TransformerDecoderBlock(embed_dim, num_heads, feed_forward_dim)
             for _ in range(num_layers)
         ])
 
@@ -37,7 +37,7 @@ class Decoder(nn.Module):
             x = block(x, cross_attention_kv)
         return x
 
-class DecoderBlock(nn.Module):
+class TransformerDecoderBlock(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int, feed_forward_dim: int):
         """
         Signular layer of a decoder
@@ -47,7 +47,7 @@ class DecoderBlock(nn.Module):
             num_heads (int): Number of heads to be used
             feed_forward_dim (int): The dimension of the hidden layer in the feed forward layers
         """
-        super(DecoderBlock, self).__init__()
+        super(TransformerDecoderBlock, self).__init__()
         
         self.self_attention = AddAndNorm(MultiHeadAttention(embed_dim, num_heads=num_heads), embed_dim)
         self.cross_attention = AddAndNorm(MultiHeadAttention(embed_dim, num_heads=num_heads), embed_dim)
