@@ -14,7 +14,6 @@ class Transformer(nn.Module):
         self.encoder = Encoder(embed_dim, num_heads, feed_forward_dim, num_layers)
         self.decoder = Decoder(embed_dim, num_heads, feed_forward_dim, num_layers)
         self.linear = nn.Linear(embed_dim, vocabulary_size)
-        self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, source: torch.tensor, target: torch.tensor):
         # Source shape: Batch size x Sequence length x Embedding dimension
@@ -29,6 +28,5 @@ class Transformer(nn.Module):
         
         # Batch size x Max sequence length x Vocabulary size
         out = self.linear(out)
-        out = self.softmax(out)
 
         return out
