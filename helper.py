@@ -5,8 +5,6 @@ from einops import rearrange
 import numpy as np
 from typing import Optional
 
-torch.manual_seed(0)
-
 class MultiHeadAttention(nn.Module):    
     def __init__(self, embed_dim: int, num_heads: int=1):
         """
